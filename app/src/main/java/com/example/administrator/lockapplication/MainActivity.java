@@ -8,32 +8,19 @@ import android.app.Service;
 import android.app.TimePickerDialog;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Build;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
-import android.os.SystemClock;
 import android.os.Vibrator;
 import android.os.Bundle;
-import android.os.WorkSource;
 import android.provider.Settings;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.TimePicker;
@@ -47,9 +34,7 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.Calendar;
 
-public class MainActivity extends Activity/* implements SensorEventListener*/ {
-
-//    private TextView textView;
+public class MainActivity extends Activity {
 
     private TextView closeTime;
     private TextView openTime;
@@ -58,14 +43,6 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
 
     private Button btn_skip;
 
-    //    private Button open;
-//    private Button clear;
-
-    //传感器
-    //private SensorManager mSensorManager;
-
-    private Vibrator vibrator;
-    private int counter = 1;
     private DevicePolicyManager devicePolicyManager;
     private boolean isAdminActive;
 
@@ -83,11 +60,6 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
     //判断亮屏的初始时间
     private boolean isFirst = true;
 
-    //0：等待息屏   1：等待亮屏    默认为0
-//    private int status = 0;
-
-    MediaPlayer mp;
-
     // 键盘管理器
     KeyguardManager keyguardManager;
     // 键盘锁
@@ -96,8 +68,6 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
     private PowerManager powerManager;
     // 唤醒锁
     private PowerManager.WakeLock wakeLock;
-
-    ScreenObserver screenObserver;
 
     public static final int WAKE_UNLOCK = 0x1123;
     private Handler mHandler = new Handler() {
@@ -129,32 +99,6 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
 
                     //释放wakeLock，关灯      释放屏幕常亮锁
                     wakeLock.release();
-
-//                    if(screenObserver == null){
-//                        Log.e("screenObserver","null");
-//                        screenObserver = new ScreenObserver(getApplicationContext());
-//                        screenObserver.requestScreenStateUpdate(new ScreenObserver.ScreenStateListener(){
-//
-//                            @Override
-//                            public void onScreenOn() {
-//                                Log.e("screenObserver","onScreenOn");
-//                                //screenObserver.wakeUpAndUnlock();
-//                            }
-//
-//                            @Override
-//                            public void onScreenOff() {
-//                                Log.e("screenObserver","onScreenOff");
-//                                screenObserver.wakeUpAndUnlock();
-//                            }
-//
-//                            @Override
-//                            public void onUserPresent() {
-//                                Log.e("screenObserver","onUserPresent");
-//                                //screenObserver.wakeUpAndUnlock();
-//                            }
-//                        });
-//                    }
-
                     break;
                 default:
                     break;
@@ -174,14 +118,8 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
 
         //常亮     软件必须前台运行
         //getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-//
-//        PowerManager pm = (PowerManager)getSystemService(POWER_SERVICE);
-//        PowerManager.WakeLock m_wklk = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "cn");
-//
-//        m_wklk.acquire(); //设置保持唤醒
 
-        EventBus.getDefault().register(this);
-        mp = MediaPlayer.create(MainActivity.this, R.raw.maple_story);//创建mediaplayer对象
+//        EventBus.getDefault().register(this);
         initData();
         initView();
 
@@ -216,8 +154,6 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
 
     private void initView() {
 
-//        textView = (TextView) findViewById(R.id.tv_timer);
-
         openTime = (TextView) findViewById(R.id.openTime);
         openTime.setOnClickListener(new Button.OnClickListener() {
             @Override
@@ -234,31 +170,10 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
             }
         });
 
-//        clear = (Button) findViewById(R.id.clear);
-//        clear.setOnClickListener(new Button.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                //锁屏
-//                devicePolicyManager.lockNow();
-//                //devicePolicyManager.resetPassword("0000", 0);
-//            }
-//        });
-
-//        open = (Button) findViewById(R.id.open);
-//        open.setOnClickListener(new Button.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                Message msg = new Message();
-//                msg.what = WAKE_UNLOCK;
-//                mHandler.sendMessageDelayed(msg, 500);
-//            }
-//        });
-
         btn_skip = (Button) findViewById(R.id.btn_skip);
         btn_skip.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 Intent intent = new Intent(MainActivity.this, LightActivity.class);
                 startActivity(intent);
             }
@@ -306,15 +221,8 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
 
     private void initData() {
 
-        mp.reset();
-        mp = MediaPlayer.create(MainActivity.this, R.raw.maple_story);//重新设置要播放的音频
-        mp.setLooping(true);
-
         powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-
-        //mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        vibrator = (Vibrator) getSystemService(Service.VIBRATOR_SERVICE);
 
         //锁屏权限
         devicePolicyManager = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
@@ -334,68 +242,22 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onMessageEvent(EventData event) {
-        Log.e("MainActivity", "EventBus事件调用     name:" + event.name);
-        if (OPEN_TAG.equals(event.name)) {
-//            status = 0;
-            Message msg = new Message();
-            msg.what = WAKE_UNLOCK;
-            //mHandler.sendMessageDelayed(msg, 100);
-            startCloseAlarm();
-            //startMp();
-        } else if (CLOSE_TAG.equals(event.name)) {
-//            status = 1;
-            startOpenAlarm();
-            //devicePolicyManager.lockNow();
-            //stopMp();
-        }
-    }
-
-    private void startMp() {
-        try {
-            mp.start();//开始播放
-//            hint.setText("正在播放音频...");
-//            play.setEnabled(false);
-//            pause.setEnabled(true);
-//            stop.setEnabled(true);
-        } catch (Exception e) {
-            e.printStackTrace();//输出异常信息
-        }
-    }
-
-    private void stopMp() {
-        try {
-            mp.stop();
-        } catch (Exception e) {
-            e.printStackTrace();//输出异常信息
-        }
-    }
-
-//    @Override
-//    protected void onResume() {
-//        super.onResume();
-//
-//        mSensorManager.registerListener(this,
-//                mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
-//                SensorManager.SENSOR_DELAY_GAME);
-//    }
-//
-//    @Override
-//    protected void onStop() {
-//        mSensorManager.unregisterListener(this);
-//        super.onStop();
-//    }
-//
-//    @Override
-//    protected void onPause() {
-//        mSensorManager.unregisterListener(this);
-//        super.onPause();
-//    }
-//
-//    @Override
-//    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-//
+//    @Subscribe(threadMode = ThreadMode.MAIN)
+//    public void onMessageEvent(EventData event) {
+//        Log.e("MainActivity", "EventBus事件调用     name:" + event.name);
+//        if (OPEN_TAG.equals(event.name)) {
+////            status = 0;
+//            Message msg = new Message();
+//            msg.what = WAKE_UNLOCK;
+//            //mHandler.sendMessageDelayed(msg, 100);
+//            startCloseAlarm();
+//            //startMp();
+//        } else if (CLOSE_TAG.equals(event.name)) {
+////            status = 1;
+//            startOpenAlarm();
+//            //devicePolicyManager.lockNow();
+//            //stopMp();
+//        }
 //    }
 
     //测试
@@ -427,11 +289,17 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, MyBroadcast.class);
         intent.putExtra("tag", OPEN_TAG);
+
+        //测试
+        intent.putExtra("hour", openHour);
+        intent.putExtra("minute", openMinute);
+        intent.putExtra("isFirst", isFirst);
+
         PendingIntent op = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 
         if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.M)
         {
-            Log.e("startOpenAlarm", "1");
+            Log.e("startOpenAlarm", "1");                   //ELAPSED_REALTIME_WAKEUP  相对系统时间
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,mill,op);
         }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
             Log.e("startOpenAlarm", "2");
@@ -469,6 +337,12 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, MyBroadcast.class);
         intent.putExtra("tag", CLOSE_TAG);
+
+        //测试
+        intent.putExtra("hour", closeHour);
+        intent.putExtra("minute", closeMinute);
+        intent.putExtra("isFirst", false);
+
         PendingIntent op = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 
         if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.M)
@@ -492,7 +366,6 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
         Intent i = new Intent(this, MyBroadcast.class);
         PendingIntent pi = PendingIntent.getBroadcast(this, 0, i, 0);
         manager.cancel(pi);
-        mp.release();
     }
 
     //设置定时时间
@@ -535,144 +408,4 @@ public class MainActivity extends Activity/* implements SensorEventListener*/ {
         }, 0, 0, true);
         timeDialog.show();
     }
-
-    private MyCountDownTimer timer;
-    private final long INTERVAL = 1000L;
-
-    public class MyCountDownTimer extends CountDownTimer {
-        public MyCountDownTimer(long millisInFuture, long countDownInterval) {
-            super(millisInFuture, countDownInterval);
-        }
-
-//        private int openHour = 0;
-//        private int openMinute = 0;
-//        private int closeHour = 0;
-//        private int closeMinute = 0;
-
-        @Override
-        public void onTick(long millisUntilFinished) {
-            long time = millisUntilFinished / 1000;
-            Log.e("onTick", time+"");
-            String t = getTime((int)time);
-            Log.e("onTick", t+"");
-//            if (status == 0) {
-//                textView.setText(String.format("亮屏倒计时  %s", t));
-//            } else {
-//                textView.setText(String.format("息屏倒计时  %s", t));
-//            }
-        }
-
-        @Override
-        public void onFinish() {
-//            textView.setText("定时时间   00:00:00");
-            cancelTimer();
-        }
-    }
-
-    public void start(View view) {
-        startTimer();
-    }
-
-    public void cancel(View view) {
-//        textView.setText("定时时间   00:00:00");
-        cancelTimer();
-    }
-
-    /**
-     * 开始倒计时
-     */
-    private void startTimer() {
-        if (timer == null) {
-
-            long t = (closeHour-openHour) * 3600 + (closeMinute-openMinute) * 60 - System.currentTimeMillis() / 1000 % 60;
-            Log.e("startTimer","closeHour:" + closeHour + "    openHour:" + openHour
-                    + "    closeMinute:" + closeMinute + "    openMinute:" + openMinute);
-            Log.e("startTimer",t * 1000 +"");
-            timer = new MyCountDownTimer(t * 1000, INTERVAL);
-        }
-        timer.start();
-    }
-
-    /**
-     * 取消倒计时
-     */
-    private void cancelTimer() {
-        if (timer != null) {
-            timer.cancel();
-            timer = null;
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        cancelTimer();
-    }
-
-    /*
-         * 将秒数转为时分秒
-         * */
-    public String getTime(int second) {
-        int h = 0;
-        int d = 0;
-        int s = 0;
-        int temp = second % 3600;
-        if (second > 3600) {
-            h = second / 3600;
-            if (temp != 0) {
-                if (temp > 60) {
-                    d = temp / 60;
-                    if (temp % 60 != 0) {
-                        s = temp % 60;
-                    }
-                } else {
-                    s = temp;
-                }
-            }
-        } else {
-            d = second / 60;
-            if (second % 60 != 0) {
-                s = second % 60;
-            }
-        }
-
-        return h + ":" + d + ":" + s + "";
-    }
-
-//    @Override
-//    public void onSensorChanged(SensorEvent event) {
-//        int sensorType = event.sensor.getType();
-//        float[] values = event.values;
-//
-//        float x = values[0];
-//        float y = values[1];
-//
-//        //旋转进行锁屏
-//        if (sensorType == Sensor.TYPE_ACCELEROMETER) {
-//            tv1.setText("现在的x轴是: " + x + " y轴是: " + y);
-//
-//            if (Math.abs(x) > 9.0 || Math.abs(y) > 9.0) {
-////              Toast.makeText(this, "现在的垂直方向已经超过了90度,将进行锁屏", 1).show();
-//                //vibrator.vibrate(500);
-//
-//                System.out.println("...............isAdminActive: "
-//                        + isAdminActive);
-//                if (isAdminActive) {
-//                    Toast.makeText(this, "具有权限,将进行锁屏....", 2).show();
-//                    devicePolicyManager.lockNow();
-//                    //devicePolicyManager.resetPassword("0000", 0);
-//                }
-//
-//
-//            }
-//        }
-//    }
-
-    /*@Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
-        return true;
-    }*/
-
 }
