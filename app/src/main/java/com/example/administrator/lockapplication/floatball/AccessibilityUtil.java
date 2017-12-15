@@ -61,6 +61,4 @@ public class AccessibilityUtil {
         return false;
     }
 
-
-
 }

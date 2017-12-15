@@ -266,6 +266,7 @@ public class MainActivity extends Activity {
     //启动亮屏定时
     public void startOpenAlarm() {
         Log.e("MainActivity", "startOpenAlarm        hourOfDay:" + openHour + "   minute:" + openMinute);
+        Log.e("MainActivity", "startOpenAlarm        closeHour:" + closeHour + "   closeMinute:" + closeMinute);
         //设置闹钟时间
         Calendar instance = Calendar.getInstance();
         instance.set(Calendar.HOUR_OF_DAY, openHour);//小时
@@ -291,9 +292,11 @@ public class MainActivity extends Activity {
         intent.putExtra("tag", OPEN_TAG);
 
         //测试
-        intent.putExtra("hour", openHour);
-        intent.putExtra("minute", openMinute);
-        intent.putExtra("isFirst", isFirst);
+        intent.putExtra("openHour", openHour);
+        intent.putExtra("openMinute", openMinute);
+        intent.putExtra("closeHour", closeHour);
+        intent.putExtra("closeMinute", closeMinute);
+        intent.putExtra("isFirst", true);   //测试
 
         PendingIntent op = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 
@@ -337,11 +340,6 @@ public class MainActivity extends Activity {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, MyBroadcast.class);
         intent.putExtra("tag", CLOSE_TAG);
-
-        //测试
-        intent.putExtra("hour", closeHour);
-        intent.putExtra("minute", closeMinute);
-        intent.putExtra("isFirst", false);
 
         PendingIntent op = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 

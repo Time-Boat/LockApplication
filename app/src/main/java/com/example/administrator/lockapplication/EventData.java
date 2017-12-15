@@ -7,15 +7,20 @@ package com.example.administrator.lockapplication;
 public class EventData {
     public String name;
 
-    public int hour;
-    public int minute;
+    public int closeHour;
+    public int closeMinute;
+
+    public int openHour;
+    public int openMinute;
 
     public boolean isFirst;
 
-    public EventData(String name, int hour, int minute, boolean isFirst) {
+    public EventData(String name, int closeHour, int closeMinute, int openHour, int openMinute, boolean isFirst) {
         this.name = name;
-        this.hour = hour;
-        this.minute = minute;
+        this.closeHour = closeHour;
+        this.closeMinute = closeMinute;
+        this.openHour = openHour;
+        this.openMinute = openMinute;
         this.isFirst = isFirst;
     }
 }
