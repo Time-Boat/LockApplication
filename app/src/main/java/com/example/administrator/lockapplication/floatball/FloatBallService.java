@@ -22,6 +22,7 @@ import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.Calendar;
+import java.util.Date;
 
 /**
  * Created by wangxiandeng on 2016/11/25.
@@ -67,8 +68,8 @@ public class FloatBallService extends AccessibilityService {
 
     }
 
-    private final String CLOSE_TAG = "息屏";
-    private final String OPEN_TAG = "亮屏";
+    public final static String CLOSE_TAG = "息屏";
+    public final static String OPEN_TAG = "亮屏";
 
     public static final int WAKE_UNLOCK = 0x1123;
 
@@ -91,8 +92,7 @@ public class FloatBallService extends AccessibilityService {
     private int closeHour = 0;
     private int closeMinute = 0;
 
-
-    private boolean isFirst = false;
+    boolean isFirst = false;
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onMessageEvent(EventData event) {
@@ -105,65 +105,58 @@ public class FloatBallService extends AccessibilityService {
         Log.e("FloatBallService", "EventBus事件调用      openHour:" + openHour + "   openMinute:" + openMinute);
         Log.e("FloatBallService", "EventBus事件调用      closeHour:" + closeHour + "   closeMinute:" + closeMinute);
         if (OPEN_TAG.equals(event.name)) {
-//            status = 0;
             Message msg = new Message();
             msg.what = WAKE_UNLOCK;
-            alarm();
-            startCloseAlarm();
+            light();
+            startOverAlarm();
         } else if (CLOSE_TAG.equals(event.name)) {
-            devicePolicyManager.lockNow();
             startOpenAlarm();
+            if(!isFirst){
+                devicePolicyManager = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
+                devicePolicyManager.lockNow();
+            }
         }
     }
 
-    private void alarm() {
+    private void light() {
         Log.e("FloatBallService", " alarm    begin----------");
 
-        if(wakeLock != null){
-            wakeLock.acquire();
-        }else{
-            // 点亮亮屏
-            wakeLock = powerManager.newWakeLock(
-                    PowerManager.ACQUIRE_CAUSES_WAKEUP |
-                    PowerManager.SCREEN_DIM_WAKE_LOCK |
-                    PowerManager.ON_AFTER_RELEASE, "bright");
+        powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
 
-            wakeLock.acquire();
-            //得到键盘锁管理器对象
-            keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-            keyguardLock = keyguardManager.newKeyguardLock("unLock");
+        // 点亮亮屏
+        wakeLock = powerManager.newWakeLock(
+                PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                PowerManager.SCREEN_DIM_WAKE_LOCK |
+                PowerManager.ON_AFTER_RELEASE, "bright");
 
-            // 键盘解锁
-            keyguardLock.disableKeyguard();
-            //锁屏
-            //keyguardLock.reenableKeyguard();
+        wakeLock.acquire();
+        //得到键盘锁管理器对象
+        keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+        keyguardLock = keyguardManager.newKeyguardLock("unLock");
 
-            //释放wakeLock，关灯      释放屏幕常亮锁
-            wakeLock.release();
-        }
+        // 键盘解锁
+        keyguardLock.disableKeyguard();
+        //锁屏
+        //keyguardLock.reenableKeyguard();
+
+        //释放wakeLock，关灯      释放屏幕常亮锁
+        wakeLock.release();
     }
 
-    public void startCloseAlarm() {
-        Log.e("FloatBallService", "startCloseAlarm        hourOfDay:" + closeHour + "   minute:" + closeMinute);
+    //启动亮屏定时
+    public void startOverAlarm() {
+        //获取系统闹钟服务
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Log.e("MainActivity", "startOverAlarm       启动息屏闹钟 ");
+        Log.e("MainActivity", "startOverAlarm        closeHour:" + closeHour + "   closeMinute:" + closeMinute);
         //设置闹钟时间
         Calendar instance = Calendar.getInstance();
         instance.set(Calendar.HOUR_OF_DAY, closeHour);//小时
         instance.set(Calendar.MINUTE, closeMinute);//分钟
         instance.set(Calendar.SECOND, 0);//秒
-
+        Log.e("MainActivity", "getActualMaximum:" + instance.get(Calendar.HOUR_OF_DAY));
         long mill = instance.getTimeInMillis();
-        //second = second + 500;
 
-        //测试
-//        if(!isFirst){
-//            mill = System.currentTimeMillis();
-//            mill += 1000 * 5;
-//        }
-
-//        Log.e("MainActivity", "startCloseAlarm        mill:" + mill + "   second:" + second);
-
-        //获取系统闹钟服务
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, MyBroadcast.class);
         intent.putExtra("tag", CLOSE_TAG);
 
@@ -172,24 +165,30 @@ public class FloatBallService extends AccessibilityService {
         intent.putExtra("openMinute", openMinute);
         intent.putExtra("closeHour", closeHour);
         intent.putExtra("closeMinute", closeMinute);
-        intent.putExtra("isFirst", false);
 
         PendingIntent op = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, mill, op);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, mill, op);
-        } else {
-            alarmManager.set(AlarmManager.RTC_WAKEUP, mill, op);
+        if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.M)
+        {
+            Log.e("startOpenAlarm", "1");                   //ELAPSED_REALTIME_WAKEUP  相对系统时间
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,mill,op);
+        }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
+            Log.e("startOpenAlarm", "2");
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP,mill,op);
+        }else{
+            Log.e("startOpenAlarm", "3");
+            alarmManager.set(AlarmManager.RTC_WAKEUP,mill,op);
         }
+
         //一次性闹钟
         //alarmManager.set(AlarmManager.RTC_WAKEUP, mill, op);
     }
 
     //启动亮屏定时
     public void startOpenAlarm() {
-        Log.e("FloatBallService", "startOpenAlarm        hourOfDay:" + openHour + "   minute:" + openMinute);
+        Log.e("MainActivity", "startOverAlarm       启动亮屏闹钟 ");
+        Log.e("MainActivity", "startOpenAlarm        hourOfDay:" + openHour + "   minute:" + openMinute);
+
         //设置闹钟时间
         Calendar instance = Calendar.getInstance();
         instance.set(Calendar.HOUR_OF_DAY, openHour);//小时
@@ -197,17 +196,14 @@ public class FloatBallService extends AccessibilityService {
         instance.set(Calendar.SECOND, 0);//秒
         Log.e("MainActivity", "getActualMaximum:" + instance.get(Calendar.HOUR_OF_DAY));
         long mill = instance.getTimeInMillis();
-//        second = second + 500;
-//        Log.e("MainActivity", "startOpenAlarm        mill:" + mill + "   second:" + second);
-//        Log.e("MainActivity", "startOpenAlarm        date:" + new Date(mill));
-//        Log.e("MainActivity", "startOpenAlarm        currentMill:" + new Date().getTime());
-        //如果不是第一次启动，就添加一天的时间
-        if (!isFirst) {
-            //mill = System.currentTimeMillis();
-            mill += 1000 * 60 * 60 * 24;
-        }
 
-        Log.e("FloatBallService", "mill:" + mill);
+
+        //如果不是第一次启动，就添加一天的时间
+        if(!isFirst){
+            mill += 1000 * 60 * 60 * 24;
+//            mill += 1000 * 60 * 60 * 4;
+        }
+        Log.e("mill", new Date(mill).toString());
 
         //获取系统闹钟服务
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
@@ -219,22 +215,20 @@ public class FloatBallService extends AccessibilityService {
         intent.putExtra("openMinute", openMinute);
         intent.putExtra("closeHour", closeHour);
         intent.putExtra("closeMinute", closeMinute);
-        intent.putExtra("isFirst", false);
 
-        PendingIntent op = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        PendingIntent op = PendingIntent.getBroadcast(this, 1, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.M)
+        {
             Log.e("startOpenAlarm", "1");                   //ELAPSED_REALTIME_WAKEUP  相对系统时间
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, mill, op);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,mill,op);
+        }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
             Log.e("startOpenAlarm", "2");
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, mill, op);
-        } else {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP,mill,op);
+        }else{
             Log.e("startOpenAlarm", "3");
-            alarmManager.set(AlarmManager.RTC_WAKEUP, mill, op);
+            alarmManager.set(AlarmManager.RTC_WAKEUP,mill,op);
         }
-
-        //一次性闹钟
-        //alarmManager.set(AlarmManager.RTC_WAKEUP, mill, op);
     }
+
 }

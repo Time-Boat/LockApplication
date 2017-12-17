@@ -19,8 +19,10 @@ public class MyBroadcast extends BroadcastReceiver {
         int openMinute = intent.getIntExtra("openMinute", 0);
         boolean isFirst = intent.getBooleanExtra("isFirst", false);
         Log.e("MyBroadcast", tag);
-        Log.e("MyBroadcast", tag);
-        Toast.makeText(context,tag,Toast.LENGTH_SHORT).show();
+        Log.e("MyBroadcast", "onReceive        hourOfDay:" + openHour + "   minute:" + openMinute
+                + "     closeHour:" + closeHour + "   closeMinute:" + closeMinute);
+        if(!isFirst)
+            Toast.makeText(context, tag, Toast.LENGTH_SHORT).show();
         EventBus.getDefault().post(new EventData(tag, closeHour, closeMinute, openHour, openMinute, isFirst));
     }
 
